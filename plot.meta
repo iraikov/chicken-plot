@@ -1,0 +1,24 @@
+;; -*- Hen -*-
+
+((egg "plot.egg") ; This should never change
+
+ ; List here all the files that should be bundled as part of your egg.  
+
+ (files "plot.setup" "plot.meta" "plot.scm" "plotstubs.scm" "tests")
+
+ ; Your egg's license:
+
+ (license "GPL-3")
+
+ ; Pick one from the list of categories (see below) for your egg and
+ ; enter it here.
+
+ (category graphics)
+
+ ; A list of eggs plot depends on.
+
+ (needs datatype matchable) 
+
+ (author "Ivan Raikov")
+
+ (synopsis "An interface to GNU libplot, a library for device-independent two-dimensional vector graphics."))

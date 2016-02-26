@@ -1,0 +1,46 @@
+;; -*- Hen -*-
+
+(define (dynld-name fn)		
+  (make-pathname #f fn ##sys#load-dynamic-extension))	
+
+(define (plot-try-compile header ldflags cppflags)
+  (and (try-compile 
+	(string-append "#include <stdio.h>\n"
+		       header "\n" 
+		       "int main(int argc, char **argv) { char *s = pl_libplot_ver; return 0; }\n")
+	ldflags: ldflags
+	cflags: cppflags)
+       (cons ldflags cppflags)))
+
+(print 
+ (plot-try-compile "#include <plot.h>" "-lplot" "-I/usr/include/plot"))
+
+(define-syntax plot-test 
+  (syntax-rules ()
+    ((_ (flags ...))
+     (condition-case (plot-try-compile flags ...)
+		     (t ()    #f)))))
+
+(define ld+cpp-options
+  (or (plot-test ("#include <plot.h>" "-lplot" ""))
+      (plot-test ("#include <plot.h>" "-lplot" "-I/usr/include/plot"))
+      (plot-test ("#include <plot.h>" "-lplot" "-I/opt/local/include"))
+      (error "unable to figure out location of libplot")))
+
+
+(compile -O -d2 -I. -s plot.scm  -j plot 
+	 -L "\"" ,(car ld+cpp-options) "\"" 
+	 -C "\"" ,(cdr ld+cpp-options) "\"")
+(compile -O -d2 -s plot.import.scm)
+
+(install-extension
+
+  ; Name of your extension:
+  'plot
+
+  ; Files to install for your extension:
+  `(,(dynld-name "plot") ,(dynld-name "plot.import")  )
+
+  ; Assoc list with properties for your extension:
+  `((version 1.1)))
+
