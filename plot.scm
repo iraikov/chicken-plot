@@ -2,7 +2,7 @@
 ;;
 ;; Chicken interface to the libplot API.
 ;;
-;; Copyright 2011-2016 Ivan Raikov.
+;; Copyright 2011-2019 Ivan Raikov.
 ;;
 ;; Based on the Ocamlplot library by Olivier Andrieu.
 ;;
@@ -151,11 +151,9 @@
 
   )
  
- (import scheme chicken foreign )
- (require-extension datatype matchable)
- (import-for-syntax matchable)
- (require-library srfi-1)
- (import (only srfi-1 every))
+ (import scheme (chicken base) (chicken foreign)
+         datatype matchable (only srfi-1 every))
+ (import-for-syntax matchable (chicken format) (only srfi-1 list-tabulate))
 
 #>
 
@@ -175,40 +173,41 @@ static void chicken_panic (C_char *msg)
   exit (5); /* should never get here */
 }
 
-static void chicken_throw_exception(C_word value) C_noret;
-static void chicken_throw_exception(C_word value)
+static void chicken_throw_exception(C_word value, C_word loc) C_noret;
+static void chicken_throw_exception(C_word value, C_word loc)
 {
-  char *aborthook = C_text("\003sysabort");
+  char *aborthook = C_text("\003syserror-hook");
 
   C_word *a = C_alloc(C_SIZEOF_STRING(strlen(aborthook)));
   C_word abort = C_intern2(&a, aborthook);
 
   abort = C_block_item(abort, 0);
   if (C_immediatep(abort))
-    chicken_panic(C_text("`##sys#abort' is not defined"));
+    chicken_panic(C_text("`##sys#error-hook' is not defined"));
 
 #if defined(C_BINARY_VERSION) && (C_BINARY_VERSION >= 8)
-  C_word rval[3] = { abort, C_SCHEME_UNDEFINED, value };
-  C_do_apply(3, rval);
+  C_word rval[4] = { abort, C_SCHEME_UNDEFINED, value, loc };
+  C_do_apply(4, rval);
 #else
   C_save(value);
   C_do_apply(1, abort, C_SCHEME_UNDEFINED);
 #endif
-
 }
 
-void chicken_error (char *msg, C_word obj) 
+void chicken_error (char *msg, const char *loc, C_word obj) 
 {
   size_t msglen;
   C_word *a;
-  C_word scmmsg;
+  C_word scmmsg, scmloc;
   C_word list;
 
   msglen = strlen (msg);
   a = C_alloc (C_SIZEOF_STRING (msglen) + C_SIZEOF_LIST(2));
   scmmsg = C_string2 (&a, (char *) msg);
   list = C_list(&a, 2, scmmsg, obj);
-  chicken_throw_exception(list);
+  a = C_alloc (C_SIZEOF_STRING (strlen(loc)));
+  scmloc = C_string2 (&a, (char *) loc);
+  chicken_throw_exception(list, scmloc);
 }
 
 
@@ -241,7 +240,7 @@ void chicken_error (char *msg, C_word obj)
 
 #define Val_is_truep(v)       C_truep(v)
 #define Val_is_pairp(v)       C_i_pairp(v)
-#define Val_is_stringp(v)     C_stringp(v)
+#define Val_is_stringp(v)     C_i_stringp(v)
 #define Val_is_booleanp(v)    C_booleanp(v)
 #define Val_is_structurep(v)  C_structurep(v)
 #define Val_is_integerp(v)    C_fixnump(v)
@@ -266,7 +265,7 @@ void chicken_error (char *msg, C_word obj)
 /* raise a Chicken exception for error reporting */
 int raise_libplot_exn(const char *msg) 
 {
-     chicken_error(msg, C_SCHEME_UNDEFINED);
+     chicken_error(msg, "libplot", C_SCHEME_UNDEFINED);
      return -1 ;
 }
 
@@ -363,7 +362,7 @@ char *bool_param(value param)
 
 char *int_param(char *buff, size_t len, value param)
 {
-     snprintf(buff, len, "%d", Val_to_int(Field(param, 2)));
+     snprintf(buff, len, "%ld", Val_to_int(Field(param, 2)));
      return buff;
 }
 
@@ -407,7 +406,7 @@ wrap_plPlotter *wrap_pl_newpl_r(int v_type, value v_in, value v_out, value v_err
 	       if(! plot->in_file)
 	       {
 		    clean_up(plot);
-		    chicken_error("could not access port", v_in) ;	
+		    chicken_error("could not access port", "newpl", v_in) ;	
 	       }
 	  }
 	  else
@@ -421,7 +420,7 @@ wrap_plPlotter *wrap_pl_newpl_r(int v_type, value v_in, value v_out, value v_err
 	       if(plot->out_file==NULL)
 	       {
 		    clean_up(plot);
-		    chicken_error("could not access port", v_out) ;	
+		    chicken_error("could not access port", "newpl", v_out) ;	
 	       }
 	  } 
 	  else
@@ -435,7 +434,7 @@ wrap_plPlotter *wrap_pl_newpl_r(int v_type, value v_in, value v_out, value v_err
 	       if(plot->err_file==NULL)
 	       {
 		    clean_up(plot);
-		    chicken_error("could not access port", v_err) ;	
+		    chicken_error("could not access port", "newpl", v_err) ;	
 
 	       }
 	  } 
@@ -453,7 +452,7 @@ wrap_plPlotter *wrap_pl_newpl_r(int v_type, value v_in, value v_out, value v_err
      if (!(plot->plotter > 0))
      {
 	  clean_up(plot) ;
-	  chicken_error("could not create plotter", v_type) ;	
+	  chicken_error("could not create plotter", "newpl", v_type) ;	
      }
 
      Val_return (plot);
@@ -466,7 +465,7 @@ value wrap_pl_deletepl_r (wrap_plPlotter *plot)
 
      if (pl_deletepl_r(plot->plotter) < 0)
      {
-	  chicken_error("could not delete plotter",Val_ptr(plot,ptr));
+	  chicken_error("could not delete plotter", "deletepl", Val_ptr(plot,ptr));
      }
 
      terminate_plot(plot);
@@ -479,7 +478,7 @@ plPlotterParams *wrap_pl_newplparams()
      plPlotterParams * params = pl_newplparams();
 
      if(! params)
-	  chicken_error("could not create parameter struct", Val_unit);
+	  chicken_error("could not create parameter struct", "newplparams", Val_unit);
 
      Val_return (params);
 }
@@ -501,7 +500,7 @@ plPlotterParams *wrap_pl_copyplparams(plPlotterParams *params)
 
      new_params = pl_copyplparams(params);
      if (!(new_params))
-	  chicken_error("could not copy parameter struct", Val_ptr(params,ptr));
+	  chicken_error("could not copy parameter struct", "copyplparams", Val_ptr(params,ptr));
 
      Val_return (new_params);
 }
@@ -515,17 +514,20 @@ value wrap_pl_setplparam(plPlotterParams *params, value paramval)
 
      if (!(Val_is_truep(Val_is_structurep(paramval))))
      {
-	 chicken_error ("invalid parameter value (not a structure)", paramval);
+      chicken_error ("invalid parameter value (not a structure)",
+                     "setplparam", paramval);
      }
 
      if (!(Val_is_truep(Val_is_stringp(tag = Field(Field(paramval,0),1)))))
      {
-	 chicken_error ("invalid parameter value (cannot determine type tag)", paramval);
+      chicken_error ("invalid parameter value (cannot determine type tag)",
+                     "setplparam", paramval);
      } else
      {
-        if ((strncmp(Val_to_cstring(tag),"plotter-parameter",17)) != 0)
+        if ((strncmp(Val_to_cstring(tag), "plot#plotter-parameter", 17)) != 0)
 	{
- 	   chicken_error ("invalid parameter value (not of type plotter-parameter)", paramval);
+         chicken_error ("invalid parameter value (not of type plotter-parameter)",
+                        "setplparam", paramval);
         }
      }
 
@@ -556,13 +558,14 @@ value wrap_pl_setplparam(plPlotterParams *params, value paramval)
        }
        else
        {
- 	   chicken_error ("invalid parameter value (unknown type)", paramval);
+        chicken_error ("invalid parameter value (unknown type)",
+                       "setplparam", paramval);
        }
      }
 
      if (pl_setplparam(params, c_param_name, c_param) < 0) 
      {  
-       chicken_error("could not set parameter", paramval);
+       chicken_error("could not set parameter", "setplparam", paramval);
      }
 
      Val_return (Val_unit);
@@ -574,23 +577,29 @@ value wrap_pl_unsetplparam(plPlotterParams *params, value paramval)
 
      if (!(Val_is_truep(Val_is_structurep(paramval))))
      {
-	 chicken_error ("invalid parameter value", paramval);
+      chicken_error ("invalid parameter value",
+                     "unsetplparam", paramval);
      }
 
-     if (!(C_is_truep(C_is_stringp(s = Field(Field(paramval,0),1)))))
+     if (!(Val_is_truep(Val_is_stringp(s = Field(Field(paramval,0),1)))))
      {
-	 chicken_error ("invalid parameter value", paramval);
+      chicken_error ("invalid parameter value",
+                     "unsetplparam", paramval);
      } else
      {
         if ((strncmp(Val_to_cstring(s),"plotter-parameter",17)) != 0)
 	{
- 	   chicken_error ("invalid parameter value", paramval);
+         chicken_error ("invalid parameter value",
+                        "unsetplparam", paramval);
         }
      }
 
      c_param_name = Val_to_cstring(Field(paramval,1));
      if(pl_setplparam(params, c_param_name, NULL) < 0)
-	  chicken_error("could not unset parameter", paramval);
+     {
+      chicken_error("could not unset parameter",
+                    "unsetplparam", paramval);
+     }
 
      Val_return (Val_unit);
 }
@@ -598,9 +607,9 @@ value wrap_pl_unsetplparam(plPlotterParams *params, value paramval)
 
 void separate_colors(value color, int* red, int *green, int *blue)
 {
-  *red   = Int_val(Field(color, 0));
-  *green = Int_val(Field(color, 1));
-  *blue  = Int_val(Field(color, 2));
+  *red   = Val_int(Field(color, 0));
+  *green = Val_int(Field(color, 1));
+  *blue  = Val_int(Field(color, 2));
 }
 
 plPlotter * unwrap_plPlotter(wrap_plPlotter *plot)
@@ -611,6 +620,7 @@ plPlotter * unwrap_plPlotter(wrap_plPlotter *plot)
 <#
 
 (define-syntax define-enumerated-type
+  (er-macro-transformer
   (lambda (x r c)
     (match-let (((_ typename pred vector inject project . rest) x))
     (let ((%define  (r 'define))
@@ -635,7 +645,9 @@ plPlotter * unwrap_plPlotter(wrap_plPlotter *plot)
 	       (let* ((variant  (car variants))
 		      (def  `(,(car variant))))
 		 (loop (cdr variants) (cons def defs)))))
-	)))))
+	))
+    ))
+  ))
 
 
 (define-syntax define-plotter-stub

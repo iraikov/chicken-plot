@@ -1,0 +1,10 @@
+;; -*- Scheme -*-
+
+((synopsis "An interface to GNU libplot, a library for device-independent two-dimensional vector graphics.")
+ (license "GPL-3")
+ (category graphics)
+ (dependencies srfi-1 srfi-13 datatype matchable)
+ (build-dependencies compile-file)
+ (author "Ivan Raikov")
+ (components (extension plot (custom-build "build.sh")))
+ )

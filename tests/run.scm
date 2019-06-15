@@ -1,5 +1,5 @@
 
-(use plot)
+(import scheme (chicken base) plot)
 
 
 (define (ccurve plotter  maxorder dx dy order)
@@ -32,9 +32,9 @@
 
 (define (main)
   (print "libplot version: " (libplot-version))
-  (let ((plotter (make-plotter (PNG) (open-output-file "testplot.png")
-			       (list (PAGESIZE "A4") (INTERLACE #t)
-				     (X_AUTO_FLUSH #f) (META_PORTABLE #t)))))
+  (let ((plotter (make-plotter (PNG) (open-output-file "testplot.png") 
+			       `(,(PAGESIZE "A4") ,(INTERLACE #t)
+                                 ,(X_AUTO_FLUSH #f) ,(META_PORTABLE #t)))))
     (simple-test plotter 5)
     (delete-plotter plotter)))
 

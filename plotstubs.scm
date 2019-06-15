@@ -29,7 +29,7 @@
      value l;
 
      if (!(Val_is_truep(Val_is_pairp(dashes))))
-	  chicken_error("invalid dashes value", dashes);
+	  chicken_error("invalid dashes value", "linedash", dashes);
 
      n = Val_list_length(dashes);
 
@@ -57,7 +57,7 @@ END
      int i, n; value l; 
 	
      if (!(Val_is_truep(Val_is_pairp(dashes))))
-	  chicken_error("invalid dashes value", dashes);
+	  chicken_error("invalid dashes value", "flinedash", dashes);
 
      n = Val_list_length(dashes);
 
@@ -351,6 +351,7 @@ EOF
 
 
 (define-syntax define-shape-plot
+  (er-macro-transformer
   (lambda (x r c)
     (match-let (((_ name arity) x))
 	       (let ((plname     (string->symbol (sprintf "pl_~A_r" name)))
@@ -371,7 +372,9 @@ EOF
 		     . ,(list-tabulate arity (lambda (x) 'int)))
 		   (define-plotter-stub ,frelstubname ,frelplname
 		     . ,(list-tabulate arity (lambda (x) 'double)))
-		   )))))
+		   ))
+               ))
+  ))
 	
 
 ;; TODO: check signedness
@@ -423,11 +426,14 @@ EOF
 
   
 (define-syntax define-attrset
+  (er-macro-transformer
   (lambda (x r c)
     (match-let (((_ name argtype) x))
 	       (let ((plname             (string->symbol (sprintf "pl_~A_r" name)))
 		     (stubname           (string->symbol (sprintf "stub_pl_~A_r" name))))
-		 `(define-plotter-stub ,stubname ,plname ,argtype)))))
+		 `(define-plotter-stub ,stubname ,plname ,argtype)))
+    ))
+  )
 
 
 (define-attrset colorname c-string)
