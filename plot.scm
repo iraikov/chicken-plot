@@ -2,7 +2,7 @@
 ;;
 ;; Chicken interface to the libplot API.
 ;;
-;; Copyright 2011-2019 Ivan Raikov.
+;; Copyright 2011-2022 Ivan Raikov.
 ;;
 ;; Based on the Ocamlplot library by Olivier Andrieu.
 ;;
