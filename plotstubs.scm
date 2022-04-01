@@ -185,43 +185,43 @@ EOF
 
 (define stub_pl_labelwidth_r
   (foreign-lambda long "pl_labelwidth_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  c-string))
 
 
 (define stub_pl_flabelwidth_r
   (foreign-lambda double "pl_flabelwidth_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  c-string))
 
 
 (define stub_pl_fontname_r
   (foreign-lambda long "pl_fontname_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  c-string))
 
 
 (define stub_pl_fontsize_r
   (foreign-lambda long "pl_fontsize_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  unsigned-int))
 
 
 (define stub_pl_ffontsize_r
   (foreign-lambda double "pl_ffontsize_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  double))
 
 
 (define stub_pl_textangle_r
   (foreign-lambda long "pl_textangle_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  unsigned-int))
 
 
 (define stub_pl_ftextangle_r
   (foreign-lambda double "pl_textangle_r"
-		  (nonnull-c-pointer plPlotter)
+		  ptr_plPlotter
 		  double))
 
 
